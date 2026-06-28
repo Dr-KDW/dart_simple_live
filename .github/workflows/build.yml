@@ -1,0 +1,49 @@
+name: Multi-Platform Cloud Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  # 任务 1: Android & TV 电视端 (Ubuntu 编译)
+  build-android:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        folder: [simple_live_app, simple_live_tv_app] # 并发编译两个安卓项目
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with: {distribution: 'zulu', java-version: '17'}
+    - uses: subosito/flutter-action@v2
+      with: {flutter-version: '3.38.0', channel: 'stable'}
+    - name: Build
+      run: |
+        cd ${{ matrix.folder }}
+        flutter pub get
+        flutter build apk --release
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.folder }}-apk
+        path: ${{ matrix.folder }}/build/app/outputs/flutter-apk/app-release.apk
+
+  # 任务 2: Windows 电脑端 (Windows 编译)
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: subosito/flutter-action@v2
+      with: {flutter-version: '3.38.0', channel: 'stable'}
+    - name: Build Windows
+      run: |
+        cd simple_live_app
+        flutter config --enable-windows-desktop
+        flutter pub get
+        flutter build windows --release
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: simple-live-windows-x64
+        path: simple_live_app/build/windows/x64/runner/Release/
